@@ -1,7 +1,13 @@
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
@@ -33,7 +39,7 @@ public class App {
         // testCreateIndex();
         // testMatchAllDocsQuery();
         // testSearchIndex();
-        testBooleanQuery();
+        // testBooleanQuery();
     }
     public static void testCreateIndex() throws IOException{
         Directory indexDirectory = FSDirectory.open(new File("indexDir").toPath());
@@ -54,7 +60,7 @@ public class App {
                     String link = parts[1].replace("link : ", "");
                     Field linkField = new StoredField("link", link);
                     String keyword = parts[2].replace("keyword: ", "");
-                    Field keywordFeild = new TextField("keyword", keyword, Store.YES);
+                    Field keywordFeild = new TextField("keyword", keyword, Store.NO);
                     String description = parts[3].replace("description:", "");
                     Field descriptionField = new TextField("description", description, Store.YES);
                     document.add(textField);
@@ -69,42 +75,32 @@ public class App {
         indexWriter.close();
     }
     
-    public static void testMatchAllDocsQuery() throws Exception {
+    public static JSONObject testMatchAllDocsQuery() throws Exception {
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
         Query query = new MatchAllDocsQuery();
         TopDocs topDocs = indexSearcher.search(query, 30);
-        System.out.println("查询结果的总条数："+ topDocs.totalHits);
-        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            Document document = indexSearcher.doc(scoreDoc.doc);
-            System.out.println(document.get("text"));
-            System.out.println(document.get("link"));
-            System.out.println(document.get("keyword"));
-            System.out.println(document.get("description"));
-            System.out.println("----------------------------------");
-        }
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
         indexReader.close();
+        return object;
     }
 
-    public static void testSearchIndex() throws IOException{
+    public static JSONObject testSearchIndex(String input) throws IOException{
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-        Query query = new TermQuery(new Term("text", "四川"));
-        TopDocs topDocs = indexSearcher.search(query, 20);
-        System.out.println("查询结果的总条数："+ topDocs.totalHits);
-        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            Document document = indexSearcher.doc(scoreDoc.doc);
-            System.out.println(document.get("text"));
-            System.out.println(document.get("link"));
-            System.out.println(document.get("keyword"));
-            System.out.println(document.get("description"));
-            System.out.println("----------------------------------");
-        }
+        Query query = new TermQuery(new Term("text", input));
+        TopDocs topDocs = indexSearcher.search(query, 30);
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
         indexReader.close();
+        return object;
     }
-    public static void testBooleanQuery() throws Exception {
+    public static JSONObject testBooleanQuery() throws Exception {
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
@@ -115,36 +111,26 @@ public class App {
         builder.add(query2, Occur.MUST);
         BooleanQuery query = builder.build();
         TopDocs topDocs = indexSearcher.search(query, 30);
-        System.out.println("查询结果的总条数："+ topDocs.totalHits);
-        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            Document document = indexSearcher.doc(scoreDoc.doc);
-            System.out.println(document.get("text"));
-            System.out.println(document.get("link"));
-            System.out.println(document.get("keyword"));
-            System.out.println(document.get("description"));
-            System.out.println("----------------------------------");
-        }
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
         indexReader.close();
+        return object;
     }
-    public static void testQueryParser() throws Exception {
+    public static JSONObject testQueryParser() throws Exception {
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
         QueryParser queryParser = new QueryParser("text", new SmartChineseAnalyzer());
         Query query = queryParser.parse("白癜风");
         TopDocs topDocs = indexSearcher.search(query, 10);
-        System.out.println("查询结果的总条数："+ topDocs.totalHits);
-        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            Document document = indexSearcher.doc(scoreDoc.doc);
-            System.out.println(document.get("text"));
-            System.out.println(document.get("link"));
-            System.out.println(document.get("keyword"));
-            System.out.println(document.get("description"));
-            System.out.println("----------------------------------");
-        }
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
         indexReader.close();
+        return object;
     }
-    public static void testMultiFiledQueryParser() throws Exception {
+    public static JSONObject testMultiFiledQueryParser() throws Exception {
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
@@ -152,15 +138,30 @@ public class App {
         MultiFieldQueryParser queryParser = new MultiFieldQueryParser(fields, new SmartChineseAnalyzer());
         Query query = queryParser.parse("apache");
         TopDocs topDocs = indexSearcher.search(query, 10);
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
+        indexReader.close();
+        return object;
+    }
+
+    public static List<JSONObject> returnJsonAndPrintln(IndexSearcher indexSearcher, TopDocs topDocs) throws IOException {
         System.out.println("查询结果的总条数："+ topDocs.totalHits);
+        List<JSONObject> list = new ArrayList<>();
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             Document document = indexSearcher.doc(scoreDoc.doc);
+            JSONObject object = new JSONObject();
+            object.put("text", document.get("text"));
+            object.put("link", document.get("link"));
+            object.put("keyword", document.get("keyword"));
+            object.put("description", document.get("description"));
+            list.add(object);
             System.out.println(document.get("text"));
             System.out.println(document.get("link"));
             System.out.println(document.get("keyword"));
             System.out.println(document.get("description"));
             System.out.println("----------------------------------");
         }
-        indexReader.close();
+        return list;
     }
 }
