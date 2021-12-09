@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -24,12 +22,15 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -40,6 +41,10 @@ public class App {
         // testMatchAllDocsQuery();
         // testSearchIndex();
         // testBooleanQuery();
+        // testPhraseQuery();
+        // testFuzzyQuery();
+        // testQueryParser();
+        // testMultiFiledQueryParser();
     }
     public static void testCreateIndex() throws IOException{
         Directory indexDirectory = FSDirectory.open(new File("indexDir").toPath());
@@ -134,9 +139,53 @@ public class App {
         Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-        String[] fields = {"fileName", "fileContent"};
+        String[] fields = {"text", "description"};
         MultiFieldQueryParser queryParser = new MultiFieldQueryParser(fields, new SmartChineseAnalyzer());
-        Query query = queryParser.parse("apache");
+        Query query = queryParser.parse("白癜风");
+        TopDocs topDocs = indexSearcher.search(query, 10);
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
+        indexReader.close();
+        return object;
+    }
+
+    public static JSONObject testPhraseQuery() throws Exception {
+        Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
+        IndexReader indexReader = DirectoryReader.open(indexDirectory);
+        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+        PhraseQuery.Builder builder = new PhraseQuery.Builder();
+        builder.add(new Term("text", "白"), 3);
+        builder.add(new Term("text", "风"), 5);
+        PhraseQuery pq = builder.build();
+        TopDocs topDocs = indexSearcher.search(pq, 10);
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
+        indexReader.close();
+        return object;
+    }
+
+    public static JSONObject testFuzzyQuery() throws Exception {
+        Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
+        IndexReader indexReader = DirectoryReader.open(indexDirectory);
+        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+        Term term = new Term("text", "白癜1风");
+        FuzzyQuery query = new FuzzyQuery(term);
+        TopDocs topDocs = indexSearcher.search(query, 10);
+        List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
+        JSONObject object = new JSONObject();
+        object.put("list", list);
+        indexReader.close();
+        return object;
+    }
+
+    public static JSONObject testWildcardQuery() throws Exception {
+        Directory indexDirectory = FSDirectory.open(new File("./indexDir").toPath());
+        IndexReader indexReader = DirectoryReader.open(indexDirectory);
+        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+        Term term = new Term("text", "白癜?风");
+        WildcardQuery query = new WildcardQuery(term);
         TopDocs topDocs = indexSearcher.search(query, 10);
         List<JSONObject> list = returnJsonAndPrintln(indexSearcher, topDocs);
         JSONObject object = new JSONObject();
